@@ -1,6 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const {auth, JWT_STRING} = require('./auth');
 const {UserModel, TodoModel} = require('./db');
@@ -16,10 +17,13 @@ app.post('/signup', async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
 
+    // Store the hashed password
+    const hashedPassword = await bcrypt.hash(password, 5);
+
     await UserModel.create({
         name: name,
         email: email,
-        password: password
+        password: hashedPassword
     });
 
     res.json({
@@ -30,13 +34,21 @@ app.post('/signup', async (req, res) => {
 app.post('/signin', async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
-
+    
     const user = await UserModel.findOne({
-        email: email,
-        password: password
+        email: email
     });
-    console.log(user);
-    if(user) {
+
+    if(!user) {
+        res.json({
+            msg: "User doesn't exist in our db"
+        });
+        return;
+    }
+    
+    // Compare with the hashed password from the db as we are not storing direct password
+    const passwordMatched = await bcrypt.compare(password, user.password);
+    if(passwordMatched) {
         const token = jwt.sign({
             id: user._id      // _id is an id from mongodb
         }, JWT_STRING);
