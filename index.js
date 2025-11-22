@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const {z, parse} = require('zod');
 
 const {auth, JWT_STRING} = require('./auth');
 const {UserModel, TodoModel} = require('./db');
@@ -13,6 +14,23 @@ const app = express();
 app.use(express.json());
 
 app.post('/signup', async (req, res) => {
+    // Input Validation using Zod
+
+    const requiredBody = z.object({
+        name: z.string().min(3).max(50),
+        email: z.email(),
+        password: z.string().min(3).max(12)
+    })
+
+    const parsedData = requiredBody.safeParse(req.body);
+    if(!parsedData.success) {
+        res.json({
+            msg: "Invalid Input",
+            error: parsedData.error
+        });
+        return;
+    }
+
     const name = req.body.name;
     const email = req.body.email;
     const password = req.body.password;
